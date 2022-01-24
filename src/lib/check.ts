@@ -1,10 +1,12 @@
 import Jimp from 'jimp';
 
-export const check = async (image: Jimp) => {
+export const check = async (src: string) => {
+  const image = await Jimp.read(src);
+
   await grayScale(image);
   const edges = getEdges(image);
+  const rad = 5;
   edges.map(([x, y]) => {
-    const rad = 5;
     const circle = CircleDrawer.createCircle(rad, 0x00000000, 0xff000035);
     const cropped = crop(image, x - rad, y - rad, rad * 2, rad * 2);
 
@@ -19,9 +21,6 @@ export const check = async (image: Jimp) => {
       });
     }
   });
-  // .filter((v) => v)
-  // .map((v) => v!)
-  // .forEach((v) => image.composite(v[2], v[0], v[1]));
 
   return new Jimp(image.bitmap.width, image.bitmap.height, 0xffffffff).composite(image, 0, 0);
 };
@@ -63,19 +62,12 @@ const fill = (image: Jimp, x: number, y: number, color: number) => {
   const bottom = () => image.getPixelColor(x, y + 1);
 
   topLeft() == thisColor && fill(image, x - 1, y - 1, color);
-
   left() === thisColor && fill(image, x - 1, y, color);
-
   bottomLeft() == thisColor && fill(image, x - 1, y + 1, color);
-
   topRight() == thisColor && fill(image, x + 1, y - 1, color);
-
   right() === thisColor && fill(image, x + 1, y, color);
-
   bottomRight() == thisColor && fill(image, x + 1, y + 1, color);
-
   top() === thisColor && fill(image, x, y - 1, color);
-
   bottom() === thisColor && fill(image, x, y + 1, color);
 };
 
@@ -90,7 +82,7 @@ const hasTransparent = (image: Jimp) => {
 
 const crop = (image: Jimp, x: number, y: number, width: number, height: number) => {
   const array: number[] = [];
-  image.scan(x, y, width, height, (idx) => {
+  image.scan(x, y, width, height, (_, __, idx) => {
     array.push(
       image.bitmap.data[idx],
       image.bitmap.data[idx + 1],
@@ -135,21 +127,19 @@ class CircleDrawer {
 }
 
 function grayScale(image: Jimp) {
-  return new Promise((resolve) =>
-    image.grayscale(() => {
-      image.scan(0, 0, image.bitmap.width, image.bitmap.height, (x, y, idx) => {
-        if (image.bitmap.data[idx] > 255 * 0.3 || image.bitmap.data[idx + 3] < 255 * 0.3) {
-          image.bitmap.data[idx] = 0;
-          image.bitmap.data[idx + 1] = 0;
-          image.bitmap.data[idx + 2] = 0;
-          image.bitmap.data[idx + 3] = 0;
-        } else {
-          image.bitmap.data[idx] = 0;
-          image.bitmap.data[idx + 1] = 0;
-          image.bitmap.data[idx + 2] = 0;
-          image.bitmap.data[idx + 3] = 255;
-        }
-      });
+  return new Promise<Jimp>((resolve) =>
+    image.scan(0, 0, image.bitmap.width, image.bitmap.height, (x, y, idx) => {
+      if (image.bitmap.data[idx] > 255 * 0.3 || image.bitmap.data[idx + 3] < 255 * 0.3) {
+        image.bitmap.data[idx] = 0;
+        image.bitmap.data[idx + 1] = 0;
+        image.bitmap.data[idx + 2] = 0;
+        image.bitmap.data[idx + 3] = 0;
+      } else {
+        image.bitmap.data[idx] = 0;
+        image.bitmap.data[idx + 1] = 0;
+        image.bitmap.data[idx + 2] = 0;
+        image.bitmap.data[idx + 3] = 255;
+      }
       resolve(image);
     }),
   );
