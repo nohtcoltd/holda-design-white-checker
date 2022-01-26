@@ -5,7 +5,7 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: {
-    '^.+\\.tsx?$': [
+    '^.+\\.[jt]sx?$': [
       'esbuild-jest',
       {
         sourcemap: true,
@@ -14,7 +14,7 @@ module.exports = {
         },
       },
     ],
-    '\\.[jt]sx?$': 'esjest-transform',
+    // '\\.[jt]sx?$': 'esjest-transform',
   },
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',

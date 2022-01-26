@@ -1,13 +1,36 @@
 import Jimp from 'jimp';
+import photon from '/@/photon/crate/pkg/photon_rs';
+import * as fs from 'fs';
+
+const read = (src: string) => {
+  const p = photon.PhotonImage.new_from_byteslice(fs.readFileSync(src));
+  photon.binarize(p, 0.3);
+  return p;
+};
+
+const toJimp = (p: photon.PhotonImage) =>
+  new Jimp({ width: p.get_width(), height: p.get_height(), data: p.get_raw_pixels() });
 
 export const check = async (src: string) => {
-  const image = await Jimp.read(src);
+  console.time('read');
+  const p = read(src);
+  console.timeEnd('read');
 
-  await grayScale(image);
-  const edges = getEdges(image);
+  console.time('gray');
+  // await grayScale(image);
+  console.timeEnd('gray');
+
+  console.time('edge');
+
+  const edges = getEdges2(p);
+  console.log(edges);
+  // return edges
+  const image = toJimp(p);
+  console.timeEnd('edge');
   const rad = 5;
+  const circle = CircleDrawer.createCircle(rad, 0x00000000, 0xff000035);
+  console.time('crop');
   edges.map(([x, y]) => {
-    const circle = CircleDrawer.createCircle(rad, 0x00000000, 0xff000035);
     const cropped = crop(image, x - rad, y - rad, rad * 2, rad * 2);
 
     const composited = cropped.composite(circle, 0, 0);
@@ -34,8 +57,10 @@ const fillSomeAlpha = (image: Jimp) => {
       filled = true;
     }
   });
-  const [x, y] = point;
-  fill(image, x, y, 0x0000ffff);
+  if (point.length > 1) {
+    const [x, y] = point;
+    fill(image, x, y, 0x0000ffff);
+  }
   return image;
 };
 
@@ -130,15 +155,9 @@ function grayScale(image: Jimp) {
   return new Promise<Jimp>((resolve) =>
     image.scan(0, 0, image.bitmap.width, image.bitmap.height, (x, y, idx) => {
       if (image.bitmap.data[idx] > 255 * 0.3 || image.bitmap.data[idx + 3] < 255 * 0.3) {
-        image.bitmap.data[idx] = 0;
-        image.bitmap.data[idx + 1] = 0;
-        image.bitmap.data[idx + 2] = 0;
-        image.bitmap.data[idx + 3] = 0;
+        image.setPixelColor(0, x, y);
       } else {
-        image.bitmap.data[idx] = 0;
-        image.bitmap.data[idx + 1] = 0;
-        image.bitmap.data[idx + 2] = 0;
-        image.bitmap.data[idx + 3] = 255;
+        image.setPixelColor(255, x, y);
       }
       resolve(image);
     }),
@@ -148,6 +167,15 @@ function grayScale(image: Jimp) {
 const rad = 3;
 const black = 255;
 const white = 0;
+
+function getEdges2(image: photon.PhotonImage) {
+  const width = image.get_width();
+  const list = [...photon.get_edges(image).values()];
+  return list.map<number[]>((m) => {
+    return [Math.floor(m / width), m % width];
+  });
+  // photon.edge_detection(image);
+}
 
 function getEdges(image: Jimp) {
   const list = [] as number[][];
