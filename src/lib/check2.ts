@@ -1,19 +1,20 @@
 import Jimp from 'jimp';
-import photon from '/@/photon/crate/pkg/photon_rs';
-import * as fs from 'fs';
 
-const read = (src: string) => photon.PhotonImage.new_from_byteslice(fs.readFileSync(src));
+export const check2 = async (src: string) => {
+  console.time('read');
+  const image = await Jimp.read(src)
+  console.timeEnd('read');
 
-const toJimp = (p: photon.PhotonImage) =>
-  new Jimp({ width: p.get_width(), height: p.get_height(), data: p.get_raw_pixels() });
+  console.time('gray');
+  await grayScale(image);
+  console.timeEnd('gray');
 
-export const check = async (src: string) => {
-  const p = read(src);
-  photon.binarize(p, 0.3);
-  const edges = getEdges2(p);
-  const image = toJimp(p);
+  console.time('edge');
+  const edges = getEdges(image);
+  console.timeEnd('edge');
   const rad = 5;
   const circle = CircleDrawer.createCircle(rad, 0x00000000, 0xff000035);
+  console.time('crop');
   edges.map(([x, y]) => {
     const cropped = crop(image, x - rad, y - rad, rad * 2, rad * 2);
 
@@ -58,9 +59,13 @@ const fill = (image: Jimp, x: number, y: number, color: number) => {
   const thisColor = image.getPixelColor(x, y);
   image.setPixelColor(color, x, y);
   const topLeft = () => image.getPixelColor(x - 1, y - 1);
+
   const left = () => image.getPixelColor(x - 1, y);
+
   const bottomLeft = () => image.getPixelColor(x - 1, y + 1);
+
   const topRight = () => image.getPixelColor(x + 1, y - 1);
+
   const right = () => image.getPixelColor(x + 1, y);
   const bottomRight = () => image.getPixelColor(x + 1, y + 1);
   const top = () => image.getPixelColor(x, y - 1);
@@ -131,17 +136,68 @@ class CircleDrawer {
   }
 }
 
-function getEdges2(image: photon.PhotonImage) {
-  const width = image.get_width();
-  const list = [...photon.get_edges(image).values()];
-  return list
-    .map((m) => m / 4)
-    .map<number[]>((m) => {
-      return [m % width, Math.floor(m / width)];
-    });
+function grayScale(image: Jimp) {
+  return new Promise<Jimp>((resolve) =>
+    image.scan(0, 0, image.bitmap.width, image.bitmap.height, (x, y, idx) => {
+      if (image.bitmap.data[idx] > 255 * 0.3 || image.bitmap.data[idx + 3] < 255 * 0.3) {
+        image.setPixelColor(0, x, y);
+      } else {
+        image.setPixelColor(255, x, y);
+      }
+      resolve(image);
+    }),
+  );
 }
 
-function delightEdge2(image: photon.PhotonImage) {
-  photon.delight_edges(image);
+const rad = 3;
+const black = 255;
+const white = 0;
+
+function getEdges(image: Jimp) {
+  const list = [] as number[][];
+
+  image.scan(
+    rad * 2,
+    rad * 2,
+    image.bitmap.width - rad * 4,
+    image.bitmap.height - rad * 4,
+    (x, y, idx) => {
+      const it = image.getPixelColor(x, y);
+      if (it === black) {
+        const left = image.getPixelColor(x - 1, y);
+        const right = image.getPixelColor(x + 1, y);
+        const top = image.getPixelColor(x, y - 1);
+        const bottom = image.getPixelColor(x, y + 1);
+        if (left === white || right === white || top === white || bottom === white) {
+          list.push([x, y]);
+        }
+      }
+    },
+  );
+  return list;
+}
+
+async function delightEdge(image: Jimp) {
+  const list = [] as number[][];
+
+  image.scan(6, 6, image.bitmap.width - 12, image.bitmap.height - 12, (x, y, idx) => {
+    const it = image.getPixelColor(x, y);
+    if (it === black) {
+      const left = image.getPixelColor(x - 1, y);
+      const right = image.getPixelColor(x + 1, y);
+      const top = image.getPixelColor(x, y - 1);
+      const bottom = image.getPixelColor(x, y + 1);
+      if (left === white || right === white || top === white || bottom === white) {
+        list.push([x, y]);
+      }
+    }
+  });
+  list.forEach(([x, y]) => image.setPixelColor(0xff00ffff, x, y));
+  // await Promise.all(
+  //   list.map(
+  //     ([x, y]) =>
+  //       new Promise((resolve) => image.setPixelColor(0xff0000ff, x, y, () => resolve(image))),
+  //   ),
+  // );
   return image;
 }

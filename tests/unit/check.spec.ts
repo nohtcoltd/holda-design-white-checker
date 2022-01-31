@@ -3,6 +3,7 @@ import { check } from '/@/lib/check';
 import photon from '@silvia-odwyer/photon-node';
 import * as fs from 'fs';
 import { base64ToBuffer } from '/@/paper/base64ToBuffer';
+import { check2 } from '/@/lib/check2';
 
 describe('test', () => {
   test('read', async () => {
@@ -27,7 +28,7 @@ describe('test', () => {
   });
   test('test', async () => {
     console.time('hoge');
-    const output = await check('tests/fixtures/demo/5-white.png');
+    const output = await check('tests/fixtures/demo/resize_white.png');
     console.timeEnd('hoge');
 
     // expect(output).toEqual(false)
