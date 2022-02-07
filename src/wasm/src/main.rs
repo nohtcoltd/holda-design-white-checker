@@ -1,8 +1,11 @@
+use std::env;
+
 use wasm;
 
 fn main() {
-    let path = "../../tests/fixtures/demo/white.png";
-    let original = image::open(path).unwrap();
-    let img2 = wasm::hoge::binarize(&original);
-    img2.save("test.png").unwrap();
+    let args: Vec<String> = env::args().collect();
+    let path = &args[1];
+    let resolution = &args[2];
+    let outpath = &args[3];
+    wasm::check(path, resolution.parse().unwrap(), outpath);
 }

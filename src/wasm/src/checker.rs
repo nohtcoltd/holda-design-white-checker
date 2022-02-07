@@ -1,8 +1,6 @@
 extern crate test;
 
 extern crate image;
-extern crate image_base64;
-extern crate imageproc;
 
 use image::buffer::ConvertBuffer;
 use image::DynamicImage;
@@ -13,16 +11,13 @@ use image::Pixel;
 use image::RgbImage;
 use image::{Luma, LumaA, Rgb};
 
+use crate::util::create_circle;
+
 fn find(image: &GrayImage, color: u8) -> Option<[u32; 2]> {
-    let mut re: Option<[u32; 2]> = None;
-    for (x, y, pixel) in image.enumerate_pixels() {
-        let Luma([data]) = *pixel;
-        if data == color {
-            re = Some([x, y]);
-            break;
-        }
-    }
-    re
+    image
+        .enumerate_pixels()
+        .find(|(x, y, Luma([data]))| *data == color)
+        .and_then(|(x, y, _)| Some([x, y]))
 }
 
 fn fill<P: Pixel + 'static>(
@@ -68,10 +63,11 @@ fn fill<P: Pixel + 'static>(
 }
 
 fn has_river(image: &GrayImage) -> bool {
-    let [x, y] = find(image, 255).unwrap();
     let mut clone = image.clone();
-    fill(&mut clone, Luma([0u8]), x, y);
-    clone.pixels().any(|Luma([data])| *data == 255u8)
+
+    let [x, y] = find(image, 255).unwrap();
+    fill(&mut clone, Luma([0]), x, y);
+    clone.pixels().any(|Luma([data])| *data == 255)
 }
 
 pub fn check(original: &DynamicImage) -> RgbImage {
@@ -154,8 +150,7 @@ pub fn binarize(img: &DynamicImage) -> GrayImage {
 pub fn get_edges(img: &GrayImage) -> Vec<[u32; 2]> {
     let mut list = Vec::new();
 
-    let width = img.width();
-    let height = img.height();
+    let (width, height) = img.dimensions();
 
     let is_valid = |x: u32, y: u32| x <= width - 1 && y <= height - 1;
 
@@ -181,37 +176,9 @@ pub fn get_edges(img: &GrayImage) -> Vec<[u32; 2]> {
     list
 }
 
-pub fn create_circle(diameter: u32) -> GrayImage {
-    let mut out = ImageBuffer::new(diameter, diameter);
-    let rad: f32 = (diameter as f32) / 2.0;
-    for x in 0..diameter {
-        for y in 0..diameter {
-            let cx = x as f32 - rad;
-            let cy = y as f32 - rad;
-            if (cx * cx + cy * cy) as f32 <= rad * rad {
-                out.put_pixel(x, y, Luma([255u8]))
-            } else {
-                out.put_pixel(x, y, Luma([127u8]))
-            }
-        }
-    }
-    out
-}
-
-pub fn delight_edges(img: &GrayImage) -> RgbImage {
-    let edges = get_edges(img);
-    let mut out = ImageBuffer::new(img.width(), img.height());
-    for (x, y, pixel) in img.enumerate_pixels() {
-        out.put_pixel(x, y, pixel.to_rgb())
-    }
-    for [x, y] in edges {
-        out.put_pixel(x, y, Rgb([255, 0, 0]))
-    }
-    out
-}
 #[cfg(test)]
 mod tests {
-    use crate::hoge::{check};
+    use crate::checker::check;
     #[test]
     fn range() {
         let mut num = 0;
