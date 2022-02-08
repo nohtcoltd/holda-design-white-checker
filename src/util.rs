@@ -22,6 +22,6 @@ mod tests {
     use super::*;
     #[test]
     fn create() {
-        create_circle(121).save("tests/dist/circle.png").unwrap();
+        create_circle(121).save("tests/output/circle.png").unwrap();
     }
 }

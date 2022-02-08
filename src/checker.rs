@@ -214,7 +214,7 @@ mod tests {
     fn temp() {
         let path = "./tests/fixtures/demo/white.png";
         let original = image::open(path).unwrap();
-        check(&original, 5).save("lumin.png").unwrap();
+        check(&original, 5).save("tests/output/lumin.png").unwrap();
 
         assert_eq!(1, 1);
     }
