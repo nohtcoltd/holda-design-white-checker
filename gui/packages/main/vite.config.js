@@ -1,9 +1,9 @@
-import {node} from '../../.electron-vendors.cache.json';
-import {join} from 'path';
-import {builtinModules} from 'module';
+import { node } from '../../.electron-vendors.cache.json';
+import { join } from 'path';
+import { builtinModules } from 'module';
+import copy from 'rollup-plugin-copy-assets';
 
 const PACKAGE_ROOT = __dirname;
-
 
 /**
  * @type {import('vite').UserConfig}
@@ -29,10 +29,15 @@ const config = {
       formats: ['cjs'],
     },
     rollupOptions: {
+      plugins: [
+        copy({
+          assets: ['wasm/'],
+        }),
+      ],
       external: [
         'electron',
         'electron-devtools-installer',
-        ...builtinModules.flatMap(p => [p, `node:${p}`]),
+        ...builtinModules.flatMap((p) => [p, `node:${p}`]),
       ],
       output: {
         entryFileNames: '[name].cjs',
